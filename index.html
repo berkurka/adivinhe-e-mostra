@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Adivinha e Mostra</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,560;0,9..144,700;1,9..144,560&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6efe2;
+      --ink: #1d2b22;
+      --muted: #5e6d63;
+      --card: #fffdf8;
+      --line: #e6d8c4;
+      --primary: #e07a2f;
+      --primary-fg: #fffaf4;
+      --good: #2c7a49;
+      --good-bg: #e5f5ea;
+      --soft: #fff4e8;
+      --shadow: 0 16px 40px rgba(70, 42, 16, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background:
+        radial-gradient(circle at top, #fff8ea 0%, var(--bg) 46%);
+      color: var(--ink);
+      font-family: Nunito, sans-serif;
+    }
+
+    button, input { font: inherit; }
+
+    .app {
+      width: min(680px, 100%);
+      margin: 0 auto;
+      min-height: 100dvh;
+      padding: 28px 20px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .kicker {
+      margin: 0;
+      font-family: Fraunces, serif;
+      font-style: italic;
+      font-size: 1.35rem;
+      color: var(--primary);
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Fraunces, serif;
+      font-size: clamp(3.2rem, 12vw, 4.6rem);
+      line-height: 0.9;
+      letter-spacing: -0.03em;
+    }
+
+    h1 span {
+      display: block;
+      font-style: italic;
+      color: var(--primary);
+    }
+
+    .lede, .note, .score-line, .progress {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.12rem;
+      line-height: 1.45;
+    }
+
+    .langs, .choices {
+      display: grid;
+      gap: 10px;
+    }
+
+    .langs { grid-template-columns: 1fr 1fr; }
+
+    .choice, .primary, .ghost, .lang {
+      border: 2px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      border-radius: 999px;
+      min-height: 56px;
+      padding: 12px 18px;
+      cursor: pointer;
+    }
+
+    .lang[aria-checked="true"], .primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--primary-fg);
+    }
+
+    .choice {
+      border-radius: 22px;
+      text-align: left;
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    .choice:hover, .lang:hover, .ghost:hover, .primary:hover { transform: translateY(-1px); }
+
+    .choice.right {
+      background: var(--good-bg);
+      border-color: var(--good);
+      color: var(--good);
+    }
+
+    .choice.wrong {
+      background: var(--soft);
+      border-color: #e2b48a;
+    }
+
+    .choice:disabled { cursor: default; transform: none; }
+
+    .primary, .ghost { font-weight: 800; font-size: 1.15rem; }
+
+    .ghost { background: transparent; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .best {
+      font-family: Fraunces, serif;
+      font-size: 2rem;
+      color: var(--ink);
+    }
+
+    .scores, .starts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .voice {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+    }
+
+    .frame {
+      position: relative;
+      border-radius: 28px;
+      overflow: hidden;
+      background: #1b2420;
+      box-shadow: var(--shadow);
+      aspect-ratio: 4 / 3;
+    }
+
+    .frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(0.12) saturate(0.2);
+      transform: scale(1.04);
+      transition: filter 0.7s ease, transform 0.7s ease;
+    }
+
+    .frame.lit img {
+      filter: none;
+      transform: none;
+    }
+
+    .frame p {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      margin: 0;
+      color: #fff8ee;
+      font-weight: 800;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+    }
+
+    .frame.lit p { display: none; }
+
+    .question {
+      margin: 0;
+      font-size: clamp(1.45rem, 4vw, 1.9rem);
+      line-height: 1.25;
+    }
+
+    .icon-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px solid var(--line);
+      background: var(--card);
+      cursor: pointer;
+      font-size: 1.3rem;
+    }
+
+    .note {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 14px 16px;
+      color: var(--ink);
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .gallery figure {
+      margin: 0;
+    }
+
+    .gallery img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 14px;
+    }
+
+    .gallery figcaption {
+      margin-top: 4px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    @media (max-width: 560px) {
+      .gallery { grid-template-columns: repeat(2, 1fr); }
+      .gallery figcaption { font-size: 0.9rem; }
+    }
+
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section id="menu">
+      <p class="kicker" id="place"></p>
+      <h1 id="title"></h1>
+      <p class="lede" id="intro"></p>
+      <div class="langs" role="radiogroup" id="langs"></div>
+      <div class="scores">
+        <p class="score-line"><span id="best-short-label"></span> <span class="best" id="best-short"></span> / 5</p>
+        <p class="score-line"><span id="best-long-label"></span> <span class="best" id="best-long"></span> / 10</p>
+      </div>
+      <label class="voice"><input type="checkbox" id="voice" checked /> <span id="voice-label"></span></label>
+      <div class="starts">
+        <button class="primary" id="start-short" type="button"></button>
+        <button class="primary" id="start-long" type="button"></button>
+      </div>
+    </section>
+
+    <section id="play" hidden>
+      <div class="row">
+        <p class="progress" id="progress"></p>
+        <button class="icon-btn" id="speak" type="button" aria-label="Read aloud">🔊</button>
+      </div>
+      <div class="frame" id="frame">
+        <img id="photo" alt="" />
+        <p id="wait"></p>
+      </div>
+      <h2 class="question" id="question"></h2>
+      <div class="choices" id="choices"></div>
+      <p class="note" id="note" hidden></p>
+      <button class="primary" id="next" type="button" hidden></button>
+    </section>
+
+    <section id="done" hidden>
+      <p class="kicker" id="done-kicker"></p>
+      <h1 id="done-title"></h1>
+      <p class="lede" id="done-score"></p>
+      <div class="gallery" id="gallery"></div>
+      <button class="primary" id="again" type="button"></button>
+      <button class="ghost" id="home" type="button"></button>
+    </section>
+  </main>
+
+  <script>
+    const QUESTIONS = [
+      {
+        image: "images/uberabatitan.jpg",
+        name: { pt: "Uberabatitan", en: "Uberabatitan" },
+        q: {
+          pt: "Qual dinossauro de pescoço comprido morou no Brasil?",
+          en: "Which long-neck dinosaur lived in Brazil?"
+        },
+        options: [
+          { pt: "Uberabatitan", en: "Uberabatitan" },
+          { pt: "Tiranossauro", en: "Tyrannosaurus" },
+          { pt: "Estegossauro", en: "Stegosaurus" }
+        ],
+        note: {
+          pt: "O Uberabatitan viveu em Uberaba, em Minas Gerais. Era gigante e comia folhas.",
+          en: "Uberabatitan lived in Uberaba, in Minas Gerais. It was a giant, and it ate leaves."
+        }
+      },
+      {
+        image: "images/praia-cassino.jpg",
+        name: { pt: "Praia do Cassino", en: "Cassino Beach" },
+        q: {
+          pt: "Qual é a praia mais comprida do Brasil?",
+          en: "Which is the longest beach in Brazil?"
+        },
+        options: [
+          { pt: "Praia do Cassino", en: "Cassino Beach" },
+          { pt: "Copacabana", en: "Copacabana" },
+          { pt: "Ipanema", en: "Ipanema" }
+        ],
+        note: {
+          pt: "A Praia do Cassino fica no Rio Grande do Sul e segue pela costa por uns 240 quilômetros.",
+          en: "Cassino Beach is in Rio Grande do Sul and runs along the coast for about 240 kilometers."
+        }
+      },
+      {
+        image: "images/pirarucu.jpg",
+        name: { pt: "Pirarucu", en: "Pirarucu" },
+        q: {
+          pt: "Qual é o maior peixe dos rios do Brasil?",
+          en: "What is the biggest fish in Brazil's rivers?"
+        },
+        options: [
+          { pt: "Pirarucu", en: "Pirarucu" },
+          { pt: "Peixinho-dourado", en: "Goldfish" },
+          { pt: "Sardinha", en: "Sardine" }
+        ],
+        note: {
+          pt: "O pirarucu vive na Amazônia e pode ficar maior do que uma criança.",
+          en: "The pirarucu lives in the Amazon and can grow bigger than a child."
+        }
+      },
+      {
+        image: "images/sucuri.jpg",
+        name: { pt: "Sucuri", en: "Anaconda" },
+        q: {
+          pt: "Qual cobra enorme vive na água do Brasil?",
+          en: "Which huge snake lives in Brazil's water?"
+        },
+        options: [
+          { pt: "Sucuri", en: "Anaconda" },
+          { pt: "Cascavel", en: "Rattlesnake" },
+          { pt: "Cobra-coral", en: "Coral snake" }
+        ],
+        note: {
+          pt: "A sucuri é uma das cobras mais pesadas do mundo e gosta de rios e pântanos.",
+          en: "The anaconda is one of the heaviest snakes in the world, and it likes rivers and swamps."
+        }
+      },
+      {
+        image: "images/onca.jpg",
+        name: { pt: "Onça-pintada", en: "Jaguar" },
+        q: {
+          pt: "Qual é o maior gato selvagem do Brasil?",
+          en: "What is the biggest wild cat in Brazil?"
+        },
+        options: [
+          { pt: "Onça-pintada", en: "Jaguar" },
+          { pt: "Leão", en: "Lion" },
+          { pt: "Gato de casa", en: "House cat" }
+        ],
+        note: {
+          pt: "A onça-pintada nada muito bem. Ela vive na Amazônia e no Pantanal.",
+          en: "The jaguar is a strong swimmer. It lives in the Amazon and the Pantanal."
+        }
+      },
+      {
+        image: "images/capivara.jpg",
+        name: { pt: "Capivara", en: "Capybara" },
+        q: {
+          pt: "Qual é o maior roedor do mundo?",
+          en: "What is the biggest rodent in the world?"
+        },
+        options: [
+          { pt: "Capivara", en: "Capybara" },
+          { pt: "Ratinho", en: "Mouse" },
+          { pt: "Coelho", en: "Rabbit" }
+        ],
+        note: {
+          pt: "A capivara mora no Brasil, adora nadar e vive em grupos perto da água.",
+          en: "The capybara lives in Brazil, loves to swim, and stays in groups near the water."
+        }
+      },
+      {
+        image: "images/tucano.jpg",
+        name: { pt: "Tucano", en: "Toucan" },
+        q: {
+          pt: "Qual ave tem um bico quase do tamanho do corpo?",
+          en: "Which bird has a beak almost as big as its body?"
+        },
+        options: [
+          { pt: "Tucano", en: "Toucan" },
+          { pt: "Pinguim", en: "Penguin" },
+          { pt: "Flamingo", en: "Flamingo" }
+        ],
+        note: {
+          pt: "O tucano-toco tem um bico laranja enorme, mas esse bico é leve.",
+          en: "The toco toucan has a huge orange beak, but that beak is light."
+        }
+      },
+      {
+        image: "images/mico-leao.jpg",
+        name: { pt: "Mico-leão-dourado", en: "Golden lion tamarin" },
+        q: {
+          pt: "Qual macaquinho tem uma juba dourada?",
+          en: "Which little monkey has a golden mane?"
+        },
+        options: [
+          { pt: "Mico-leão-dourado", en: "Golden lion tamarin" },
+          { pt: "Gorila", en: "Gorilla" },
+          { pt: "Chimpanzé", en: "Chimpanzee" }
+        ],
+        note: {
+          pt: "O mico-leão-dourado é pequenino e mora na Mata Atlântica, no Rio de Janeiro.",
+          en: "The golden lion tamarin is tiny and lives in the Atlantic Forest, in Rio de Janeiro."
+        }
+      },
+      {
+        image: "images/acai.jpg",
+        name: { pt: "Açaí", en: "Açaí" },
+        q: {
+          pt: "Qual fruta roxa da Amazônia vira uma tigela cremosa?",
+          en: "Which purple Amazon fruit is mashed into a creamy bowl?"
+        },
+        options: [
+          { pt: "Açaí", en: "Açaí" },
+          { pt: "Maçã", en: "Apple" },
+          { pt: "Banana", en: "Banana" }
+        ],
+        note: {
+          pt: "O açaí cresce em palmeiras da Amazônia.",
+          en: "Açaí grows on palm trees in the Amazon."
+        }
+      },
+      {
+        image: "images/boto.jpg",
+        name: { pt: "Boto-cor-de-rosa", en: "Pink river dolphin" },
+        q: {
+          pt: "Qual golfinho rosa nada no rio Amazonas?",
+          en: "Which pink dolphin swims in the Amazon River?"
+        },
+        options: [
+          { pt: "Boto-cor-de-rosa", en: "Pink river dolphin" },
+          { pt: "Orca", en: "Orca" },
+          { pt: "Peixe-palhaço", en: "Clownfish" }
+        ],
+        note: {
+          pt: "O boto vive na água doce da Amazônia e pode ficar rosado.",
+          en: "The boto lives in the fresh water of the Amazon and can turn pink."
+        }
+      },
+      {
+        image: "images/brasilia.jpg",
+        name: { pt: "Brasília", en: "Brasília" },
+        q: {
+          pt: "Qual é a capital do Brasil?",
+          en: "What is the capital of Brazil?"
+        },
+        options: [
+          { pt: "Brasília", en: "Brasília" },
+          { pt: "Rio de Janeiro", en: "Rio de Janeiro" },
+          { pt: "São Paulo", en: "São Paulo" }
+        ],
+        note: {
+          pt: "O Rio de Janeiro já foi a capital. Brasília foi construída para ser a nova e foi inaugurada em 1960.",
+          en: "Rio de Janeiro used to be the capital. Brasília was built to be the new one and opened in 1960."
+        }
+      },
+      {
+        image: "images/pau-brasil.jpg",
+        name: { pt: "Pau-brasil", en: "Pau-brasil" },
+        q: {
+          pt: "O Brasil ganhou o nome de uma árvore. Qual?",
+          en: "Brazil is named after a tree. Which one?"
+        },
+        options: [
+          { pt: "Pau-brasil", en: "Pau-brasil" },
+          { pt: "Seringueira", en: "Rubber tree" },
+          { pt: "Coqueiro", en: "Coconut palm" }
+        ],
+        note: {
+          pt: "O pau-brasil tem madeira bem vermelha. No passado, as pessoas usavam essa cor para tingir tecido.",
+          en: "Pau-brasil has bright red wood. Long ago, people used that color to dye cloth."
+        }
+      },
+      {
+        image: "images/povos-indigenas.jpg",
+        name: { pt: "Povos indígenas", en: "Indigenous peoples" },
+        q: {
+          pt: "Quem já morava no Brasil quando os navios de Portugal chegaram, em 1500?",
+          en: "Who already lived in Brazil when ships from Portugal arrived in 1500?"
+        },
+        options: [
+          { pt: "Povos indígenas", en: "Indigenous peoples" },
+          { pt: "Vikings", en: "Vikings" },
+          { pt: "Piratas", en: "Pirates" }
+        ],
+        note: {
+          pt: "Muitos povos diferentes já viviam aqui havia milhares de anos.",
+          en: "Many different peoples had already lived here for thousands of years."
+        }
+      },
+      {
+        image: "images/sete-de-setembro.jpg",
+        name: { pt: "7 de setembro", en: "September 7" },
+        q: {
+          pt: "Qual é o Dia da Independência do Brasil?",
+          en: "When is Brazil's Independence Day?"
+        },
+        options: [
+          { pt: "7 de setembro", en: "September 7" },
+          { pt: "1 de janeiro", en: "January 1" },
+          { pt: "25 de dezembro", en: "December 25" }
+        ],
+        note: {
+          pt: "Em 7 de setembro de 1822, o príncipe Pedro declarou o Brasil livre de Portugal.",
+          en: "On September 7, 1822, Prince Pedro declared Brazil free from Portugal."
+        }
+      },
+      {
+        image: "images/santos-dumont.jpg",
+        name: { pt: "Santos Dumont", en: "Santos Dumont" },
+        q: {
+          pt: "Qual brasileiro voou num avião que ele mesmo construiu, o 14-Bis?",
+          en: "Which Brazilian flew an airplane he built himself, the 14-Bis?"
+        },
+        options: [
+          { pt: "Alberto Santos Dumont", en: "Alberto Santos Dumont" },
+          { pt: "Pelé", en: "Pelé" },
+          { pt: "Monteiro Lobato", en: "Monteiro Lobato" }
+        ],
+        note: {
+          pt: "Em 1906, Santos Dumont voou o 14-Bis em Paris, na frente de uma multidão.",
+          en: "In 1906, Santos Dumont flew the 14-Bis in Paris, in front of a crowd."
+        }
+      },
+      {
+        image: "images/lencois.jpg",
+        name: { pt: "Lençóis Maranhenses", en: "Lençóis Maranhenses" },
+        q: {
+          pt: "Onde dá para nadar em lagos de água da chuva entre dunas brancas?",
+          en: "Where can you swim in rainwater lakes between white sand dunes?"
+        },
+        options: [
+          { pt: "Lençóis Maranhenses", en: "Lençóis Maranhenses" },
+          { pt: "Amazônia", en: "The Amazon" },
+          { pt: "Copacabana", en: "Copacabana" }
+        ],
+        note: {
+          pt: "Fica no Maranhão. Parece um deserto, mas os lagos azuis são de água da chuva.",
+          en: "It is in Maranhão. It looks like a desert, but the blue lakes are rainwater."
+        }
+      },
+      {
+        image: "images/iguacu.jpg",
+        name: { pt: "Cataratas do Iguaçu", en: "Iguaçu Falls" },
+        q: {
+          pt: "Quais cachoeiras enormes ficam entre o Brasil e a Argentina?",
+          en: "Which giant waterfalls sit between Brazil and Argentina?"
+        },
+        options: [
+          { pt: "Cataratas do Iguaçu", en: "Iguaçu Falls" },
+          { pt: "Cataratas do Niágara", en: "Niagara Falls" },
+          { pt: "Salto Ángel", en: "Angel Falls" }
+        ],
+        note: {
+          pt: "Centenas de quedas caem juntas na fronteira, perto de Foz do Iguaçu.",
+          en: "Hundreds of falls drop together on the border, near Foz do Iguaçu."
+        }
+      },
+      {
+        image: "images/rio-amazonas.jpg",
+        name: { pt: "Rio Amazonas", en: "Amazon River" },
+        q: {
+          pt: "Qual rio carrega mais água do que qualquer outro rio do mundo?",
+          en: "Which river carries more water than any other river on Earth?"
+        },
+        options: [
+          { pt: "Rio Amazonas", en: "The Amazon" },
+          { pt: "Rio Nilo", en: "The Nile" },
+          { pt: "Rio São Francisco", en: "The São Francisco" }
+        ],
+        note: {
+          pt: "O Nilo é mais comprido. O Amazonas é o que tem mais água.",
+          en: "The Nile is longer. The Amazon is the one with the most water."
+        }
+      },
+      {
+        image: "images/cristo-redentor.jpg",
+        name: { pt: "Cristo Redentor", en: "Christ the Redeemer" },
+        q: {
+          pt: "Qual estátua gigante fica no alto de um morro no Rio de Janeiro?",
+          en: "Which giant statue stands on a mountain above Rio de Janeiro?"
+        },
+        options: [
+          { pt: "Cristo Redentor", en: "Christ the Redeemer" },
+          { pt: "Estátua da Liberdade", en: "The Statue of Liberty" },
+          { pt: "O Pensador", en: "The Thinker" }
+        ],
+        note: {
+          pt: "O Cristo Redentor fica no Corcovado e abre os braços sobre a cidade.",
+          en: "Christ the Redeemer stands on Corcovado and opens its arms over the city."
+        }
+      },
+      {
+        image: "images/brigadeiro.jpg",
+        name: { pt: "Brigadeiro", en: "Brigadeiro" },
+        q: {
+          pt: "Qual doce brasileiro é uma bolinha de chocolate coberta de granulado?",
+          en: "Which Brazilian candy is a chocolate ball covered in sprinkles?"
+        },
+        options: [
+          { pt: "Brigadeiro", en: "Brigadeiro" },
+          { pt: "Rosquinha", en: "Donut" },
+          { pt: "Pirulito", en: "Lollipop" }
+        ],
+        note: {
+          pt: "O brigadeiro é um doce de festa. O nome veio de um brigadeiro do Brasil.",
+          en: "Brigadeiro is a party sweet. The name came from a Brazilian brigadier."
+        }
+      }
+    ];
+
+    const TEXT = {
+      pt: {
+        place: "Brasil",
+        titleA: "Adivinha",
+        titleB: "e Mostra",
+        intro: "Vinte perguntas sobre o Brasil. Jogue uma partida curta, com 5, ou longa, com 10. Cada jogo sorteia perguntas novas. A figura fica no escuro até você responder.",
+        bestShort: "Recorde curta",
+        bestLong: "Recorde longa",
+        voice: "Ler em voz alta",
+        short: "Curta, 5",
+        long: "Longa, 10",
+        wait: "A luz acende depois da resposta",
+        next: "Próxima",
+        see: "Ver o placar",
+        again: "Jogar de novo",
+        home: "Voltar ao início",
+        yes: "Isso!",
+        almost: "Quase!",
+        answer: "A resposta é",
+        done: "Que passeio!",
+        of: "de"
+      },
+      en: {
+        place: "Brazil",
+        titleA: "Guess",
+        titleB: "& Show",
+        intro: "Twenty questions about Brazil. Play a short game of 5, or a long game of 10. Each game draws a new set. The picture stays dark until you answer.",
+        bestShort: "Best short",
+        bestLong: "Best long",
+        voice: "Read aloud",
+        short: "Short, 5",
+        long: "Long, 10",
+        wait: "The lights come up after you answer",
+        next: "Next",
+        see: "See the score",
+        again: "Play again",
+        home: "Back to start",
+        yes: "Yes!",
+        almost: "Almost!",
+        answer: "The answer is",
+        done: "What a trip!",
+        of: "of"
+      }
+    };
+
+    const menu = document.getElementById("menu");
+    const play = document.getElementById("play");
+    const done = document.getElementById("done");
+    const state = {
+      lang: localStorage.getItem("adivinhe-lang") || "pt",
+      voiceOn: localStorage.getItem("adivinhe-voice") !== "off",
+      bestShort: Number(localStorage.getItem("adivinhe-best-5") || 0),
+      bestLong: Number(localStorage.getItem("adivinhe-best-10") || localStorage.getItem("adivinhe-best") || 0),
+      length: 5,
+      round: [],
+      index: 0,
+      score: 0,
+      order: [],
+      locked: false
+    };
+
+    document.documentElement.lang = state.lang === "pt" ? "pt-BR" : "en";
+    document.getElementById("voice").checked = state.voiceOn;
+
+    function t(key) {
+      return TEXT[state.lang][key];
+    }
+
+    function say(parts) {
+      if (!state.voiceOn || !window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const locale = state.lang === "pt" ? "pt-BR" : "en-US";
+      const voice = window.speechSynthesis.getVoices().find((item) => item.lang.toLowerCase().startsWith(locale.toLowerCase()));
+      parts.filter(Boolean).forEach((text) => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = locale;
+        utterance.rate = 0.95;
+        if (voice) utterance.voice = voice;
+        window.speechSynthesis.speak(utterance);
+      });
+    }
+
+    function show(which) {
+      menu.hidden = which !== "menu";
+      play.hidden = which !== "play";
+      done.hidden = which !== "done";
+    }
+
+    function renderMenu() {
+      document.getElementById("place").textContent = t("place");
+      document.getElementById("title").innerHTML = t("titleA") + "<span>" + t("titleB") + "</span>";
+      document.getElementById("intro").textContent = t("intro");
+      document.getElementById("best-short-label").textContent = t("bestShort");
+      document.getElementById("best-long-label").textContent = t("bestLong");
+      document.getElementById("best-short").textContent = String(state.bestShort);
+      document.getElementById("best-long").textContent = String(state.bestLong);
+      document.getElementById("voice-label").textContent = t("voice");
+      document.getElementById("start-short").textContent = t("short");
+      document.getElementById("start-long").textContent = t("long");
+      const langs = document.getElementById("langs");
+      langs.setAttribute("aria-label", state.lang === "pt" ? "Idioma" : "Language");
+      langs.replaceChildren();
+      [["pt", "Português"], ["en", "English"]].forEach(([code, label]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "lang";
+        button.setAttribute("role", "radio");
+        button.setAttribute("aria-checked", String(code === state.lang));
+        button.textContent = label;
+        button.addEventListener("click", () => {
+          state.lang = code;
+          localStorage.setItem("adivinhe-lang", code);
+          document.documentElement.lang = code === "pt" ? "pt-BR" : "en";
+          renderMenu();
+        });
+        langs.appendChild(button);
+      });
+    }
+
+    function shuffleChoices(question) {
+      const items = question.options.map((option, index) => ({ option, correct: index === 0 }));
+      for (let i = items.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [items[i], items[j]] = [items[j], items[i]];
+      }
+      return items;
+    }
+
+    function drawRound(count) {
+      const pool = QUESTIONS.slice();
+      for (let i = pool.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      return pool.slice(0, count);
+    }
+
+    function begin(count) {
+      state.length = count;
+      state.round = drawRound(count);
+      state.index = 0;
+      state.score = 0;
+      show("play");
+      renderQuestion(true);
+    }
+
+    function renderQuestion(speakIt) {
+      const question = state.round[state.index];
+      state.order = shuffleChoices(question);
+      state.locked = false;
+      document.getElementById("progress").textContent = (state.index + 1) + " / " + state.round.length;
+      document.getElementById("question").textContent = question.q[state.lang];
+      const frame = document.getElementById("frame");
+      frame.classList.remove("lit");
+      const photo = document.getElementById("photo");
+      photo.src = question.image;
+      photo.alt = "";
+      document.getElementById("wait").textContent = t("wait");
+      document.getElementById("note").hidden = true;
+      const next = document.getElementById("next");
+      next.hidden = true;
+      next.textContent = state.index === state.round.length - 1 ? t("see") : t("next");
+      const choices = document.getElementById("choices");
+      choices.replaceChildren();
+      state.order.forEach((item) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "choice";
+        button.textContent = item.option[state.lang];
+        button.addEventListener("click", () => answer(item, button));
+        choices.appendChild(button);
+      });
+      if (speakIt) {
+        say([question.q[state.lang], ...state.order.map((item) => item.option[state.lang])]);
+      }
+    }
+
+    function answer(item, button) {
+      if (state.locked) return;
+      state.locked = true;
+      const question = state.round[state.index];
+      const correct = state.order.find((entry) => entry.correct);
+      document.querySelectorAll(".choice").forEach((choice) => {
+        choice.disabled = true;
+        if (choice.textContent === correct.option[state.lang]) choice.classList.add("right");
+      });
+      if (item.correct) {
+        state.score += 1;
+      } else {
+        button.classList.add("wrong");
+      }
+      document.getElementById("frame").classList.add("lit");
+      document.getElementById("photo").alt = question.name[state.lang];
+      const note = document.getElementById("note");
+      const lead = item.correct ? t("yes") : t("almost") + " " + t("answer") + " " + correct.option[state.lang] + ".";
+      note.hidden = false;
+      note.textContent = lead + " " + question.note[state.lang];
+      document.getElementById("next").hidden = false;
+      say([lead, question.note[state.lang]]);
+    }
+
+    function finish() {
+      const bestKey = state.length === 5 ? "bestShort" : "bestLong";
+      const storageKey = state.length === 5 ? "adivinhe-best-5" : "adivinhe-best-10";
+      if (state.score > state[bestKey]) {
+        state[bestKey] = state.score;
+        localStorage.setItem(storageKey, String(state.score));
+      }
+      document.getElementById("done-kicker").textContent = t("place");
+      document.getElementById("done-title").textContent = t("done");
+      document.getElementById("done-score").textContent = state.score + " " + t("of") + " " + state.length;
+      document.getElementById("again").textContent = t("again");
+      document.getElementById("home").textContent = t("home");
+      const gallery = document.getElementById("gallery");
+      gallery.replaceChildren();
+      state.round.forEach((question) => {
+        const figure = document.createElement("figure");
+        const img = document.createElement("img");
+        img.src = question.image;
+        img.alt = question.name[state.lang];
+        const caption = document.createElement("figcaption");
+        caption.textContent = question.name[state.lang];
+        figure.append(img, caption);
+        gallery.appendChild(figure);
+      });
+      show("done");
+      say([t("done"), state.score + " " + t("of") + " " + state.length]);
+    }
+
+    document.getElementById("voice").addEventListener("change", (event) => {
+      state.voiceOn = event.target.checked;
+      localStorage.setItem("adivinhe-voice", state.voiceOn ? "on" : "off");
+      if (!state.voiceOn && window.speechSynthesis) window.speechSynthesis.cancel();
+    });
+
+    document.getElementById("start-short").addEventListener("click", () => begin(5));
+    document.getElementById("start-long").addEventListener("click", () => begin(10));
+
+    document.getElementById("speak").addEventListener("click", () => {
+      const question = state.round[state.index];
+      if (state.locked) {
+        say([document.getElementById("note").textContent]);
+      } else {
+        say([question.q[state.lang], ...state.order.map((item) => item.option[state.lang])]);
+      }
+    });
+
+    document.getElementById("next").addEventListener("click", () => {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      if (state.index === state.round.length - 1) finish();
+      else {
+        state.index += 1;
+        renderQuestion(true);
+      }
+    });
+
+    document.getElementById("again").addEventListener("click", () => begin(state.length));
+
+    document.getElementById("home").addEventListener("click", () => {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      renderMenu();
+      show("menu");
+    });
+
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = () => {};
+    }
+
+    renderMenu();
+  </script>
+</body>
+</html>
